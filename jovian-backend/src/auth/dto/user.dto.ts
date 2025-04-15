@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsPhoneNumber, IsString } from "class-validator"
+import { IsEmail, IsNotEmpty, IsPhoneNumber, IsString, IsUUID } from "class-validator"
 
 export class SignUpDto {
     @IsNotEmpty()
@@ -31,4 +31,30 @@ export interface UserInputDto {
     first_name: string
     last_name: string
     phone_number: string
+}
+
+export class LoginDto{
+    @IsNotEmpty()
+    @IsString()
+    username: string;
+    @IsNotEmpty() 
+    @IsString()
+    password: string;
+}
+
+export class UserDto {
+    id: string
+    username: string
+    email: string
+    first_name: string
+    last_name: string
+    phone_number: string
+    created_at: Date
+    updated_at: Date
+}
+export class UserID {
+    @IsNotEmpty()
+    @IsString()
+    @IsUUID()
+    id: string
 }
