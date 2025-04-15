@@ -123,6 +123,7 @@ export async function login(data: LoginData) {
       first_name: "John",
       last_name: "Doe",
       email: data.email,
+      role: data.email.includes("admin") ? "ADMIN" : "USER", // Changed to uppercase "ADMIN" and "USER" roles
     }
   }
 }
@@ -151,6 +152,7 @@ export async function getCurrentUser() {
       first_name: "John",
       last_name: "Doe",
       email: "user@example.com",
+      role: "ADMIN", // Changed to uppercase "ADMIN" role
     }
   } catch (error) {
     console.error("Get current user error:", error)
@@ -162,4 +164,10 @@ export async function getCurrentUser() {
 export async function isAuthenticated() {
   const user = await getCurrentUser()
   return !!user
+}
+
+// Middleware to check if user is an admin
+export async function isAdmin() {
+  const user = await getCurrentUser()
+  return user?.role === "ADMIN" // Changed to check for uppercase "ADMIN"
 }
