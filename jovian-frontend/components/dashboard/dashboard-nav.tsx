@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { GamepadIcon as GameController, Server, CreditCard, Settings, BarChart, Users } from "lucide-react"
+import { GamepadIcon as GameController, Server, CreditCard, Settings, BarChart, Users, User } from "lucide-react"
 import { ModeToggle } from "@/components/mode-toggle"
 
 const items = [
@@ -31,6 +31,11 @@ const items = [
     title: "Team",
     href: "/dashboard/team",
     icon: Users,
+  },
+  {
+    title: "Account",
+    href: "/dashboard/account",
+    icon: User,
   },
   {
     title: "Settings",

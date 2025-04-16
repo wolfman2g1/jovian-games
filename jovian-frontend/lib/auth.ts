@@ -136,6 +136,20 @@ export async function logout() {
 
 // Function to get the current user
 export async function getCurrentUser() {
+  // In development with auth disabled, return a mock user
+  if (process.env.NEXT_PUBLIC_DISABLE_AUTH === "true") {
+    return {
+      id: "dev-user",
+      username: "developer",
+      first_name: "Development",
+      last_name: "User",
+      email: "dev@example.com",
+      role: "ADMIN", // Give admin access in development
+      bio: "This is a mock user for development",
+      discord_username: "developer#1234",
+    }
+  }
+
   const cookieStore = cookies()
   const token = cookieStore.get("token")
 
@@ -162,12 +176,24 @@ export async function getCurrentUser() {
 
 // Middleware to check if user is authenticated
 export async function isAuthenticated() {
+  // Bypass authentication in development when flag is set
+  if (process.env.NEXT_PUBLIC_DISABLE_AUTH === "true") {
+    console.warn("⚠️ Authentication is disabled for development")
+    return true
+  }
+
   const user = await getCurrentUser()
   return !!user
 }
 
 // Middleware to check if user is an admin
 export async function isAdmin() {
+  // Bypass admin check in development when flag is set
+  if (process.env.NEXT_PUBLIC_DISABLE_AUTH === "true") {
+    console.warn("⚠️ Admin authentication is disabled for development")
+    return true
+  }
+
   const user = await getCurrentUser()
   return user?.role === "ADMIN" // Changed to check for uppercase "ADMIN"
 }
