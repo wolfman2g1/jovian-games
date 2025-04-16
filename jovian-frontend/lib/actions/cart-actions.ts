@@ -7,7 +7,8 @@ import { revalidatePath } from "next/cache"
 
 // Helper function to get cart from cookies
 async function getCartFromCookies(): Promise<Cart> {
-  const cartCookie = cookies().get("cart")?.value
+  const cookieStore = await cookies()
+  const cartCookie = cookieStore.get("cart")?.value
 
   if (!cartCookie) {
     return {
@@ -33,7 +34,8 @@ async function getCartFromCookies(): Promise<Cart> {
 
 // Helper function to save cart to cookies
 async function saveCartToCookies(cart: Cart) {
-  cookies().set("cart", JSON.stringify(cart), {
+  const cookieStore = await cookies()
+  cookieStore.set("cart", JSON.stringify(cart), {
     httpOnly: true,
     path: "/",
     maxAge: 60 * 60 * 24 * 7, // 1 week

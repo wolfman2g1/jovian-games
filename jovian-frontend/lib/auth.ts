@@ -12,7 +12,7 @@ interface SignUpData {
 }
 
 interface LoginData {
-  email: string
+  username: string // Changed from email to username
   password: string
   rememberMe?: boolean
 }
@@ -39,7 +39,7 @@ export async function signUp(data: SignUpData) {
     const { token, user } = await response.json()
 
     // Store the JWT token in a cookie
-    const cookieStore = cookies()
+    const cookieStore = await cookies()
     cookieStore.set("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -54,7 +54,7 @@ export async function signUp(data: SignUpData) {
 
     // Mock successful response
     const mockToken = "mock_jwt_token_" + Math.random().toString(36).substring(2)
-    const cookieStore = cookies()
+    const cookieStore = await cookies()
     cookieStore.set("token", mockToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -94,7 +94,7 @@ export async function login(data: LoginData) {
     const { token, user } = await response.json()
 
     // Store the JWT token in a cookie
-    const cookieStore = cookies()
+    const cookieStore = await cookies()
     cookieStore.set("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -109,7 +109,7 @@ export async function login(data: LoginData) {
 
     // Mock successful response
     const mockToken = "mock_jwt_token_" + Math.random().toString(36).substring(2)
-    const cookieStore = cookies()
+    const cookieStore = await cookies()
     cookieStore.set("token", mockToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -119,18 +119,18 @@ export async function login(data: LoginData) {
 
     return {
       id: "1",
-      username: "user",
+      username: data.username, // Use the username from login data
       first_name: "John",
       last_name: "Doe",
-      email: data.email,
-      role: data.email.includes("admin") ? "ADMIN" : "USER", // Changed to uppercase "ADMIN" and "USER" roles
+      email: `${data.username}@example.com`, // Generate an email based on username
+      role: data.username.includes("admin") ? "ADMIN" : "USER", // Check username instead of email
     }
   }
 }
 
 // Function to log out a user
 export async function logout() {
-  const cookieStore = cookies()
+  const cookieStore = await cookies()
   cookieStore.delete("token")
 }
 
@@ -150,7 +150,7 @@ export async function getCurrentUser() {
     }
   }
 
-  const cookieStore = cookies()
+  const cookieStore = await cookies()
   const token = cookieStore.get("token")
 
   if (!token) {
