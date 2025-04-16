@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -12,7 +12,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
-import { ImageUpload } from "@/components/admin/image-upload"
+import { Loader2 } from "lucide-react"
+import { getAllCategories, getAllDevelopers, getAllGenres, createGame, updateGame } from "@/lib/actions/game-actions"
+import { ImageUploader } from "@/components/admin/image-uploader"
+import type { Category, Developer, Genre, Game } from "@/types"
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -21,35 +24,73 @@ const formSchema = z.object({
   description: z.string().min(10, {
     message: "Description must be at least 10 characters.",
   }),
-  category: z.string({
+  cpu: z.coerce.number().int().min(1, {
+    message: "CPU cores must be at least 1.",
+  }),
+  ram: z.coerce.number().int().min(1, {
+    message: "RAM must be at least 1 GB.",
+  }),
+  price: z.coerce.number().min(0, {
+    message: "Price must be a positive number.",
+  }),
+  categoryId: z.string({
     required_error: "Please select a category.",
   }),
+  developerId: z.string({
+    required_error: "Please select a developer.",
+  }),
+  genreId: z.string({
+    required_error: "Please select a genre.",
+  }),
   imageUrl: z.string().optional(),
-  bannerUrl: z.string().optional(),
-  minSpecs: z.string().min(5, {
-    message: "Minimum specifications are required.",
-  }),
-  recommendedSpecs: z.string().min(5, {
-    message: "Recommended specifications are required.",
-  }),
-  status: z.enum(["active", "inactive"]),
 })
 
-export function GameForm({ game }: { game?: any }) {
+export function GameForm({ game }: { game?: Game }) {
   const [isLoading, setIsLoading] = useState(false)
+  const [isDataLoading, setIsDataLoading] = useState(true)
+  const [categories, setCategories] = useState<Category[]>([])
+  const [developers, setDevelopers] = useState<Developer[]>([])
+  const [genres, setGenres] = useState<Genre[]>([])
   const router = useRouter()
+
+  // Fetch categories, developers, and genres on component mount
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const [categoriesData, developersData, genresData] = await Promise.all([
+          getAllCategories(),
+          getAllDevelopers(),
+          getAllGenres(),
+        ])
+
+        setCategories(categoriesData)
+        setDevelopers(developersData)
+        setGenres(genresData)
+      } catch (error) {
+        console.error("Error fetching data:", error)
+        toast.error("Failed to load form data", {
+          description: "Please try again or contact support.",
+        })
+      } finally {
+        setIsDataLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [])
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: game?.name || "",
       description: game?.description || "",
-      category: game?.category || "",
+      cpu: game?.cpu || 1,
+      ram: game?.ram || 1,
+      price: game?.price || 0,
+      categoryId: game?.categoryId || "",
+      developerId: game?.developerId || "",
+      genreId: game?.genreId || "",
       imageUrl: game?.imageUrl || "",
-      bannerUrl: game?.bannerUrl || "",
-      minSpecs: game?.minSpecs || "",
-      recommendedSpecs: game?.recommendedSpecs || "",
-      status: game?.status || "active",
     },
   })
 
@@ -57,26 +98,38 @@ export function GameForm({ game }: { game?: any }) {
     setIsLoading(true)
 
     try {
-      // In a real app, you would call your API here
-      console.log(values)
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      toast.success(game ? "Game updated!" : "Game created!", {
-        description: game
-          ? `${values.name} has been updated successfully.`
-          : `${values.name} has been added to the catalog.`,
-      })
+      if (game?.id) {
+        // Update existing game
+        await updateGame(game.id, values)
+        toast.success("Game updated!", {
+          description: `${values.name} has been updated successfully.`,
+        })
+      } else {
+        // Create new game
+        await createGame(values)
+        toast.success("Game created!", {
+          description: `${values.name} has been added to the catalog.`,
+        })
+      }
 
       router.push("/admin/games")
     } catch (error) {
+      console.error("Error saving game:", error)
       toast.error("Something went wrong", {
         description: "The game could not be saved. Please try again.",
       })
     } finally {
       setIsLoading(false)
     }
+  }
+
+  if (isDataLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <span className="ml-2 text-muted-foreground">Loading form data...</span>
+      </div>
+    )
   }
 
   return (
@@ -100,9 +153,56 @@ export function GameForm({ game }: { game?: any }) {
                   )}
                 />
 
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="cpu"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>CPU Cores</FormLabel>
+                        <FormControl>
+                          <Input type="number" min="1" placeholder="1" {...field} />
+                        </FormControl>
+                        <FormDescription>Number of CPU cores required</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="ram"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>RAM (GB)</FormLabel>
+                        <FormControl>
+                          <Input type="number" min="1" placeholder="1" {...field} />
+                        </FormControl>
+                        <FormDescription>Amount of RAM in GB</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
                 <FormField
                   control={form.control}
-                  name="category"
+                  name="price"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Price</FormLabel>
+                      <FormControl>
+                        <Input type="number" min="0" step="0.01" placeholder="9.99" {...field} />
+                      </FormControl>
+                      <FormDescription>Price in USD</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="categoryId"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Category</FormLabel>
@@ -113,14 +213,17 @@ export function GameForm({ game }: { game?: any }) {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="sandbox">Sandbox</SelectItem>
-                          <SelectItem value="fps">FPS</SelectItem>
-                          <SelectItem value="survival">Survival</SelectItem>
-                          <SelectItem value="mmorpg">MMORPG</SelectItem>
-                          <SelectItem value="strategy">Strategy</SelectItem>
-                          <SelectItem value="simulation">Simulation</SelectItem>
-                          <SelectItem value="sports">Sports</SelectItem>
-                          <SelectItem value="racing">Racing</SelectItem>
+                          {categories.length > 0 ? (
+                            categories.map((category) => (
+                              <SelectItem key={category.id} value={category.id!}>
+                                {category.name}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="none" disabled>
+                              No categories available
+                            </SelectItem>
+                          )}
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -130,19 +233,28 @@ export function GameForm({ game }: { game?: any }) {
 
                 <FormField
                   control={form.control}
-                  name="status"
+                  name="developerId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Status</FormLabel>
+                      <FormLabel>Developer</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select status" />
+                            <SelectValue placeholder="Select a developer" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="active">Active</SelectItem>
-                          <SelectItem value="inactive">Inactive</SelectItem>
+                          {developers.length > 0 ? (
+                            developers.map((developer) => (
+                              <SelectItem key={developer.id} value={developer.id!}>
+                                {developer.name}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="none" disabled>
+                              No developers available
+                            </SelectItem>
+                          )}
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -152,13 +264,30 @@ export function GameForm({ game }: { game?: any }) {
 
                 <FormField
                   control={form.control}
-                  name="description"
+                  name="genreId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Description</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder="A brief description of the game..." className="min-h-32" {...field} />
-                      </FormControl>
+                      <FormLabel>Genre</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a genre" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {genres.length > 0 ? (
+                            genres.map((genre) => (
+                              <SelectItem key={genre.id} value={genre.id!}>
+                                {genre.name}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="none" disabled>
+                              No genres available
+                            </SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -177,8 +306,8 @@ export function GameForm({ game }: { game?: any }) {
                     <FormItem>
                       <FormLabel>Game Icon</FormLabel>
                       <FormControl>
-                        <ImageUpload
-                          value={field.value}
+                        <ImageUploader
+                          value={field.value || ""}
                           onChange={field.onChange}
                           onRemove={() => field.onChange("")}
                         />
@@ -195,21 +324,17 @@ export function GameForm({ game }: { game?: any }) {
               <CardContent className="pt-6">
                 <FormField
                   control={form.control}
-                  name="bannerUrl"
+                  name="description"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Game Banner</FormLabel>
+                      <FormLabel>Description</FormLabel>
                       <FormControl>
-                        <ImageUpload
-                          value={field.value}
-                          onChange={field.onChange}
-                          onRemove={() => field.onChange("")}
-                          aspectRatio="21:9"
+                        <Textarea
+                          placeholder="A brief description of the game..."
+                          className="min-h-[250px]"
+                          {...field}
                         />
                       </FormControl>
-                      <FormDescription>
-                        Upload a banner image for the game. Recommended size: 1920x810px.
-                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -219,46 +344,21 @@ export function GameForm({ game }: { game?: any }) {
           </div>
         </div>
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="grid gap-6 md:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="minSpecs"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Minimum Specifications</FormLabel>
-                    <FormControl>
-                      <Textarea placeholder="Minimum hardware requirements..." className="min-h-32" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="recommendedSpecs"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Recommended Specifications</FormLabel>
-                    <FormControl>
-                      <Textarea placeholder="Recommended hardware requirements..." className="min-h-32" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
         <div className="flex justify-end gap-4">
           <Button type="button" variant="outline" onClick={() => router.push("/admin/games")}>
             Cancel
           </Button>
           <Button type="submit" disabled={isLoading}>
-            {isLoading ? "Saving..." : game ? "Update Game" : "Add Game"}
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {game ? "Updating..." : "Creating..."}
+              </>
+            ) : game ? (
+              "Update Game"
+            ) : (
+              "Add Game"
+            )}
           </Button>
         </div>
       </form>

@@ -31,3 +31,45 @@ enum Role {
   USER
   ADMIN
 }
+
+model Category {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  games     Game[]
+}
+
+model Developer {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  games     Game[]
+}
+
+model Genre {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  games     Game[]
+}
+
+model Game {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String    @unique
+  description String
+  cpu         Int
+  ram         Int
+  price       Decimal
+  image       String
+  category    Category  @relation(fields: [categoryId], references: [id])
+  categoryId  String    @db.Uuid
+  developer   Developer @relation(fields: [developerId], references: [id])
+  developerId String    @db.Uuid
+  genre       Genre     @relation(fields: [genreId], references: [id])
+  genreId     String    @db.Uuid
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
